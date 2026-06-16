@@ -41,7 +41,15 @@ In **Fundamental Domain** mode, ℌ is tiled by copies γ(F) of the fundamental 
 | Blue | **Parabolic** | \|tr\| = 2 | Fixes exactly one point on the boundary ∂ℌ (a real number or ∞). Moves every interior point along a horocycle — a circle internally tangent to ∂ℌ at the fixed point. |
 | Green | **Hyperbolic** | \|tr\| > 2 | Fixes exactly two points on ∂ℌ. There is a unique geodesic connecting them (the **axis**); the transformation translates every point on the axis by a fixed hyperbolic distance, and drags all other points along curves that asymptotically approach the axis. Think of it as the hyperbolic analogue of a Euclidean translation, but constrained to act along one geodesic. |
 
-Shading within each color family varies with depth — lighter means farther from the identity. A **Fixed pts** toggle marks the fixed points of each element in both panels.
+Shading within each color family varies with depth — lighter means farther from the identity.
+
+A **Fixed pts** toggle marks the fixed points of each element in both panels:
+
+| Marker | Type | Location | Meaning |
+|--------|------|----------|---------|
+| ★ star | Elliptic | Inside ℌ | The single point the element rotates around — it stays fixed while everything orbits it |
+| △ triangle | Parabolic | On ∂ℌ | The single boundary point the element fixes — interior points drift toward it along horocycles but never reach it |
+| ○ circle | Hyperbolic | On ∂ℌ (two points) | The two endpoints of the axis geodesic — fixed points are "at infinity" from any interior point |
 
 ### Quaternion algebra groups (Katok §5.2)
 
