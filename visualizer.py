@@ -272,7 +272,7 @@ def _is_qnr_mod_p(a, p):
 
 def check_division_algebra(a, b):
     """Return (is_division: bool, message: str) for A=(a,b/Q), a,b positive ints.
-    Tests: (1) perfect-square, (2) Theorem 5.2.5, (3) heuristic zero-divisor search."""
+    Tests: (1) perfect-square, (2) Theorem 5.2.5, (3) zero-divisor search."""
     import math
     a, b = int(a), int(b)
     t = int(math.isqrt(a))

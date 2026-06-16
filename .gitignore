@@ -3,3 +3,4 @@ __pycache__/
 *.pyo
 *.pdf
 .DS_Store
+.gitignore
