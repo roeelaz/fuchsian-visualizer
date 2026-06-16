@@ -1,5 +1,7 @@
 # Fuchsian Visualizer
 
+![Fuchsian Visualizer](docs/demo.png)
+
 An interactive visualizer for hyperbolic geometry and Fuchsian groups, built in Python with matplotlib.
 
 Displays the **upper half-plane ℌ** and **Poincaré disk 𝔻** side by side, linked via the Cayley map. Based on Katok, *Fuchsian Groups* (1992).
