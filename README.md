@@ -70,6 +70,27 @@ When A is a **division algebra** (e.g. b prime and a a quadratic non-residue mod
 
 **Custom input:** enter any a, b in the "Custom Γ(a,b/ℚ)" fields and click **Generate Γ(a,b)**. The app checks whether A is a division algebra and reports the result in the description panel.
 
+## Theorems from Katok (1992) used in this project
+
+### §5.2 — Quaternion algebras
+
+**Theorem 5.2.1(i)**: If a ∈ (ℚ*)² (a is a perfect square), then A = (a,b/ℚ) ≅ M(2,ℚ) — not a division algebra.
+
+**Theorem 5.2.3**: A is a division algebra if and only if the reduced norm Nrd(x) = 0 only for x = 0.
+This is the foundational characterisation used to verify division algebras.
+
+**Theorem 5.2.4**: A quaternion algebra over a field is either isomorphic to M(2,F) or a division algebra — no other possibility exists.
+Combined with 5.2.3, this means showing Nrd has no zero is sufficient to conclude A is a division algebra.
+
+**Theorem 5.2.5**: If b is prime and a is a quadratic non-residue mod b, then A = (a,b/ℚ) is a division algebra.
+This is the criterion implemented in `check_division_algebra`. It is a sufficient condition; for prime b with a a quadratic *residue* mod b, the algebra may still be a division algebra (e.g. A=(3,11/ℚ))
+
+### §5.4 — Cocompact groups
+
+**Theorem 5.4.1**: If A = (a,b/ℚ) is a division algebra, then Γ(A,O)\ℌ is **compact**.
+Geometrically: no cusps, no parabolic elements, all non-identity group elements are hyperbolic.
+This is why the quaternion presets Γ(3,5/ℚ) and Γ(2,3/ℚ) produce closed tessellations with no escaping tiles.
+
 ## Installation
 
 ```bash
@@ -86,14 +107,18 @@ python3 visualizer.py
 
 ```
 fuchsian_visualizer/
-  visualizer.py        # all math and UI
+  fuchsian_math.py     # all math: geodesics, Möbius, group enumeration,
+                       #   quaternion algebra, division algebra check, group presets
+  visualizer.py        # UI only: matplotlib app, imports from fuchsian_math
   tests/
-    test_math.py       # 39 unit tests (pure math, no display)
+    test_math.py       # 41 unit tests (pure math, no display)
   docs/
-    visualizer_plan.md   # geodesic visualizer design
-    domains_plan.md      # fundamental/Dirichlet domain design
-    groups_plan.md       # multiple groups + element types design
-    quaternion_plan.md   # quaternion algebra groups design
+    visualizer_plan.md        # geodesic visualizer design
+    domains_plan.md           # fundamental/Dirichlet domain design
+    groups_plan.md            # multiple groups + element types design
+    quaternion_plan.md        # quaternion algebra groups design
+    prime_b_restriction_plan.md  # exact division algebra check design
+    hilbert_symbol.md         # Hilbert symbol approach (beyond §5.2)
 ```
 
 ## Running tests
