@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from visualizer import (
+from fuchsian_math import (
     cayley, cayley_inv, geodesic_type, geodesic_H_params, sample_geodesic_H,
     mobius, hyp_dist as hyp_dist_acosh,
     gen_psl2z, _mat_key,
@@ -291,7 +291,7 @@ def test_check_div_alg_prime_b_qr_rejected():
 def test_is_prime_miller_rabin():
     primes = [2, 3, 5, 7, 11, 13, 97, 101, 7919, 104729]
     composites = [1, 4, 6, 9, 15, 49, 100, 1001]
-    from visualizer import _is_prime
+    from fuchsian_math import _is_prime
     for p in primes:
         assert _is_prime(p), f'{p} should be prime'
     for c in composites:
