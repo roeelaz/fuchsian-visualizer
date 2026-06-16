@@ -31,17 +31,17 @@ Displays the **upper half-plane ℌ** and **Poincaré disk 𝔻** side by side, 
 
 **Custom quaternion groups** (see below).
 
-### Element types
+### Tessellation colors and element types
 
-Every non-identity element of PSL(2,ℝ) is classified by its trace:
+In **Fundamental Domain** mode, ℌ is tiled by copies γ(F) of the fundamental domain F, one per group element γ. Each tile is colored by the **type** of γ, determined by |tr γ|:
 
-| Type | Condition | Geometry |
-|------|-----------|----------|
-| Elliptic | \|tr\| < 2 | Rotation about a fixed point in ℌ |
-| Parabolic | \|tr\| = 2 | Horocyclic translation; fixes one boundary point |
-| Hyperbolic | \|tr\| > 2 | Translation along a geodesic axis; fixes two boundary points |
+| Color | Type | Condition | Geometry |
+|-------|------|-----------|----------|
+| 🔴 Red | **Elliptic** | \|tr\| < 2 | Rotation about a fixed point inside ℌ. The fixed point is the unique point left in place; all others orbit around it. |
+| 🔵 Blue | **Parabolic** | \|tr\| = 2 | Fixes exactly one point on the boundary ∂ℌ (a real number or ∞). Moves every interior point along a horocycle — a circle internally tangent to ∂ℌ at the fixed point. |
+| 🟢 Green | **Hyperbolic** | \|tr\| > 2 | Fixes exactly two points on ∂ℌ. There is a unique geodesic connecting them (the **axis**); the transformation translates every point on the axis by a fixed hyperbolic distance, and drags all other points along curves that asymptotically approach the axis. Think of it as the hyperbolic analogue of a Euclidean translation, but constrained to act along one geodesic. |
 
-Tiles in Fund. Domain mode are colored by element type (red = elliptic, blue = parabolic, green = hyperbolic). A "Fixed pts" toggle marks fixed points in both panels.
+Shading within each color family varies with depth — lighter means farther from the identity. A **Fixed pts** toggle marks the fixed points of each element in both panels.
 
 ### Quaternion algebra groups (Katok §5.2)
 
