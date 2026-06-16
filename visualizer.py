@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, RadioButtons, TextBox
+from matplotlib.collections import LineCollection
 
 from fuchsian_math import (
     cayley, cayley_inv,
@@ -111,10 +112,24 @@ class HyperbolicVisualizer:
         self.domain_artists = []
         self.fp_artists = []
         self.dirichlet_z0 = None
+        self._elements_cache = {}  # (group_label, depth) -> elements list
 
         self.fig.canvas.mpl_connect('button_press_event', self._on_click)
         self._set_fd_controls_visible(False)
         self._update_description()
+
+    # ── element cache ─────────────────────────────────────────────────────────
+
+    def _get_elements(self, depth=None):
+        if depth is None:
+            depth = self.depth
+        key = (self.current_group.label, depth)
+        if key not in self._elements_cache:
+            self._elements_cache[key] = self.current_group.enum_func(depth)
+        return self._elements_cache[key]
+
+    def _clear_element_cache(self):
+        self._elements_cache.clear()
 
     # ── panel setup ──────────────────────────────────────────────────────────
 
@@ -157,6 +172,7 @@ class HyperbolicVisualizer:
 
     def _on_group_change(self, label):
         self.current_group = next(g for g in GROUP_PRESETS if g.label == label)
+        self._clear_element_cache()
         self._clear_domain_artists()
         self._clear_fp_artists()
         self.dirichlet_z0 = None
@@ -252,7 +268,7 @@ class HyperbolicVisualizer:
 
     def _draw_tessellation(self):
         g = self.current_group
-        elements = g.enum_func(self.depth)
+        elements = self._get_elements()
         if g.use_std_fd:
             self._draw_tessellation_std(elements)
         else:
@@ -267,6 +283,7 @@ class HyperbolicVisualizer:
 
     def _draw_tessellation_std(self, elements):
         arcs = std_fd_arcs()
+        segs_H, segs_D, colors = [], [], []
         for idx, M in enumerate(elements):
             color = self._tile_color(M, idx)
             for (a, b) in arcs:
@@ -276,14 +293,21 @@ class HyperbolicVisualizer:
                         continue
                     pts_H = sample_geodesic_H(ga, gb)
                     pts_D = cayley(pts_H)
-                    l_H, = self.ax_H.plot(pts_H.real, pts_H.imag, color=color, lw=2.2)
-                    l_D, = self.ax_D.plot(pts_D.real, pts_D.imag, color=color, lw=2.2)
-                    self.domain_artists.extend([l_H, l_D])
+                    segs_H.append(np.column_stack([pts_H.real, pts_H.imag]))
+                    segs_D.append(np.column_stack([pts_D.real, pts_D.imag]))
+                    colors.append(color)
                 except Exception:
                     continue
+        if segs_H:
+            lc_H = LineCollection(segs_H, colors=colors, linewidths=2.2)
+            lc_D = LineCollection(segs_D, colors=colors, linewidths=2.2)
+            self.ax_H.add_collection(lc_H)
+            self.ax_D.add_collection(lc_D)
+            self.domain_artists.extend([lc_H, lc_D])
 
     def _draw_tessellation_dirichlet(self, g, elements):
         fd_arcs = dirichlet_boundary(g.canonical_z0, elements)
+        segs_H, segs_D, colors = [], [], []
         for idx, M in enumerate(elements):
             color = self._tile_color(M, idx)
             for arc in fd_arcs:
@@ -293,16 +317,22 @@ class HyperbolicVisualizer:
                     if len(seg) < 2:
                         continue
                     seg_D = cayley(seg)
-                    l_H, = self.ax_H.plot(seg.real, seg.imag, color=color, lw=2.2)
-                    l_D, = self.ax_D.plot(seg_D.real, seg_D.imag, color=color, lw=2.2)
-                    self.domain_artists.extend([l_H, l_D])
+                    segs_H.append(np.column_stack([seg.real, seg.imag]))
+                    segs_D.append(np.column_stack([seg_D.real, seg_D.imag]))
+                    colors.append(color)
                 except Exception:
                     continue
+        if segs_H:
+            lc_H = LineCollection(segs_H, colors=colors, linewidths=2.2)
+            lc_D = LineCollection(segs_D, colors=colors, linewidths=2.2)
+            self.ax_H.add_collection(lc_H)
+            self.ax_D.add_collection(lc_D)
+            self.domain_artists.extend([lc_H, lc_D])
 
     # ── fixed-point markers ───────────────────────────────────────────────────
 
     def _draw_fixed_points(self):
-        elements = self.current_group.enum_func(self.depth)
+        elements = self._get_elements()
         I = np.eye(2)
         for M in elements:
             if np.allclose(M, I) or np.allclose(M, -I):
@@ -349,13 +379,16 @@ class HyperbolicVisualizer:
         m_D, = self.ax_D.plot(w0.real, w0.imag, '*', color='red', ms=10, zorder=6)
         self.domain_artists.extend([m_H, m_D])
 
-        elements = self.current_group.enum_func(self.depth + 2)
+        elements = self._get_elements(self.depth + 2)
         arcs = dirichlet_boundary(z0, elements)
-        for seg in arcs:
-            seg_D = cayley(seg)
-            a_H, = self.ax_H.plot(seg.real, seg.imag, color='purple', lw=1.8, zorder=4)
-            a_D, = self.ax_D.plot(seg_D.real, seg_D.imag, color='purple', lw=1.8, zorder=4)
-            self.domain_artists.extend([a_H, a_D])
+        segs_H = [np.column_stack([seg.real, seg.imag]) for seg in arcs]
+        segs_D = [np.column_stack([cayley(seg).real, cayley(seg).imag]) for seg in arcs]
+        if segs_H:
+            lc_H = LineCollection(segs_H, colors='purple', linewidths=1.8, zorder=4)
+            lc_D = LineCollection(segs_D, colors='purple', linewidths=1.8, zorder=4)
+            self.ax_H.add_collection(lc_H)
+            self.ax_D.add_collection(lc_D)
+            self.domain_artists.extend([lc_H, lc_D])
 
         self._update_description(z0=z0, n_arcs=len(arcs))
         self.fig.canvas.draw_idle()
@@ -390,6 +423,7 @@ class HyperbolicVisualizer:
             canonical_z0=2j,
         )
         self.current_group = custom
+        self._clear_element_cache()
         self._clear_domain_artists()
         self._clear_fp_artists()
         self.dirichlet_z0 = None
@@ -397,7 +431,7 @@ class HyperbolicVisualizer:
         if self.mode == 'Fund. Domain':
             self._draw_tessellation()
 
-        elements = custom.enum_func(self.depth)
+        elements = self._get_elements()
         counts = self._element_type_counts(elements)
         self._desc.set_text(
             f'Custom  Γ({a},{b}/ℚ)  │  norm eq: {norm_eq}\n'
@@ -472,7 +506,7 @@ class HyperbolicVisualizer:
                 )
 
         elif self.mode == 'Fund. Domain':
-            elements = g.enum_func(self.depth)
+            elements = self._get_elements()
             counts = self._element_type_counts(elements)
             text = (
                 f'Group: {g.group_desc}\n'
@@ -489,7 +523,7 @@ class HyperbolicVisualizer:
 
         else:  # Dirichlet
             if z0 is not None and n_arcs is not None:
-                elements = g.enum_func(self.depth + 2)
+                elements = self._get_elements(self.depth + 2)
                 counts = self._element_type_counts(elements)
                 text = (
                     f'Group: {g.group_desc}\n'

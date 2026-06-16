@@ -226,21 +226,24 @@ def quaternion_embed(x0, x1, x2, x3, a, b):
 
 def gen_quaternion(a, b, coord_bound=4):
     """Enumerate Γ(A,O) for A=(a,b/Q), standard integer order.
-    Returns all ρ₁(x) with (x₀,x₁,x₂,x₃)∈[-R,R]⁴ and Nrd(x)=1, sign-normalised."""
+    Returns all ρ₁(x) with (x₀,x₁,x₂,x₃)∈[-R,R]⁴ and Nrd(x)=1, sign-normalised.
+    Uses numpy broadcasting to find norm-1 coordinates without Python loops."""
+    r = np.arange(-coord_bound, coord_bound + 1)
+    X0, X1, X2, X3 = np.meshgrid(r, r, r, r, indexing='ij')
+    norms = X0**2 - a*X1**2 - b*X2**2 + a*b*X3**2
+    mask = (norms == 1)
+    coords = np.stack([X0[mask], X1[mask], X2[mask], X3[mask]], axis=1)
+
     elements, seen = [], set()
-    for x0 in range(-coord_bound, coord_bound + 1):
-        for x1 in range(-coord_bound, coord_bound + 1):
-            for x2 in range(-coord_bound, coord_bound + 1):
-                for x3 in range(-coord_bound, coord_bound + 1):
-                    if quaternion_norm(x0, x1, x2, x3, a, b) == 1:
-                        M = quaternion_embed(x0, x1, x2, x3, a, b)
-                        flat = M.flatten()
-                        if flat[0] < -1e-9 or (abs(flat[0]) < 1e-9 and flat[1] < -1e-9):
-                            M = -M
-                        k = _mat_key(M)
-                        if k not in seen:
-                            seen.add(k)
-                            elements.append(M)
+    for x0, x1, x2, x3 in coords:
+        M = quaternion_embed(int(x0), int(x1), int(x2), int(x3), a, b)
+        flat = M.flatten()
+        if flat[0] < -1e-9 or (abs(flat[0]) < 1e-9 and flat[1] < -1e-9):
+            M = -M
+        k = _mat_key(M)
+        if k not in seen:
+            seen.add(k)
+            elements.append(M)
     return elements
 
 def _is_prime(n):
