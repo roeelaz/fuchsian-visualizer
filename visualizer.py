@@ -256,12 +256,26 @@ def gen_quaternion(a, b, coord_bound=4):
     return elements
 
 def _is_prime(n):
-    """Simple primality test for small positive integers."""
-    n = abs(n)
+    """Deterministic Miller-Rabin primality test, exact for n < 3_215_031_751."""
+    n = abs(int(n))
     if n < 2: return False
-    if n == 2: return True
-    if n % 2 == 0: return False
-    return all(n % i for i in range(3, int(n**0.5) + 1, 2))
+    if n in (2, 3, 5, 7): return True
+    if n % 2 == 0 or n % 3 == 0: return False
+    # write n-1 = 2^r * d
+    r, d = 0, n - 1
+    while d % 2 == 0:
+        r += 1
+        d //= 2
+    for a in (2, 3, 5, 7):
+        if a >= n: continue
+        x = pow(a, d, n)
+        if x in (1, n - 1): continue
+        for _ in range(r - 1):
+            x = pow(x, 2, n)
+            if x == n - 1: break
+        else:
+            return False
+    return True
 
 def _is_qnr_mod_p(a, p):
     """True iff a is a quadratic non-residue mod prime p > 2 (Euler's criterion)."""
@@ -272,27 +286,31 @@ def _is_qnr_mod_p(a, p):
 
 def check_division_algebra(a, b):
     """Return (is_division: bool, message: str) for A=(a,b/Q), a,b positive ints.
-    Tests: (1) perfect-square, (2) Theorem 5.2.5, (3) zero-divisor search."""
+
+    Exact — no heuristics.  Only accepts inputs covered by Theorem 5.2.5:
+      b prime, a not a perfect square, a QNR mod b  ↔  A is a division algebra.
+    All other inputs are rejected with an explanatory message.
+    """
     import math
     a, b = int(a), int(b)
+    # (1) a must not be a perfect square (Theorem 5.2.1)
     t = int(math.isqrt(a))
     if t * t == a:
-        return False, f'a={a}={t}² is a perfect square → A≅M(2,Q), not a division algebra'
-    if _is_prime(abs(b)) and _is_qnr_mod_p(a, abs(b)):
-        return True, (f'Theorem 5.2.5: b={b} prime, a={a} is QNR mod {b} '
-                      f'→ A is a division algebra; Γ\\ℌ is compact (Thm 5.4.1)')
-    R = 8
-    for x0 in range(-R, R + 1):
-        for x1 in range(-R, R + 1):
-            for x2 in range(-R, R + 1):
-                for x3 in range(-R, R + 1):
-                    if x0 == x1 == x2 == x3 == 0:
-                        continue
-                    if quaternion_norm(x0, x1, x2, x3, a, b) == 0:
-                        return False, (f'Zero divisor ({x0},{x1},{x2},{x3}) found '
-                                       f'→ A≅M(2,Q), not a division algebra')
-    return True, (f'No zero divisors found for |xᵢ|≤{R} '
-                  f'→ likely a division algebra; Γ\\ℌ likely compact')
+        return False, (f'a={a}={t}² is a perfect square → A≅M(2,ℚ), not a division algebra '
+                       f'(Theorem 5.2.1)')
+    # (2) b must be prime — Theorem 5.2.5 requires it
+    if not _is_prime(b):
+        return False, (f'b={b} is not prime.  Theorem 5.2.5 requires b to be prime.  '
+                       f'Try a prime value of b.')
+    # (3) a must be a QNR mod b — Theorem 5.2.5 requires it
+    if not _is_qnr_mod_p(a, b):
+        return False, (f'a={a} is a quadratic residue mod b={b}.  '
+                       f'Theorem 5.2.5 does not apply; choose a with a QNR mod b.  '
+                       f'(Note: even for prime b, a QR mod b may still give a division '
+                       f'algebra via other primes, but this cannot be confirmed within §5.2.)')
+    # (4) All conditions met — exact conclusion
+    return True, (f'Theorem 5.2.5: b={b} prime, a={a} is QNR mod {b} '
+                  f'→ A is a division algebra; Γ\\ℌ is compact (Thm 5.4.1)')
 
 # ── Group presets ─────────────────────────────────────────────────────────────
 
@@ -737,15 +755,16 @@ class HyperbolicVisualizer:
             return
 
         is_div, div_msg = check_division_algebra(a, b)
-        norm_eq = f'x₀²−{a}x₁²−{b}x₂²+{a*b}x₃²=1'
-        compact_note = ('Compact FD: no cusps, all elements hyperbolic.'
-                        if is_div else
-                        'Non-compact: may have parabolic elements (not a division algebra).')
+        if not is_div:
+            self._desc.set_text(f'Γ({a},{b}/ℚ) — cannot generate:\n{div_msg}')
+            self.fig.canvas.draw_idle()
+            return
 
+        norm_eq = f'x₀²−{a}x₁²−{b}x₂²+{a*b}x₃²=1'
         custom = GroupPreset(
             label=f'Γ({a},{b}/ℚ)',
             group_desc=f'A=({a},{b}/ℚ), standard order.  Norm: {norm_eq}.',
-            fd_desc=compact_note,
+            fd_desc='Compact FD: no cusps, all elements hyperbolic.',
             enum_func=lambda d, _a=a, _b=b: gen_quaternion(_a, _b, d + 2),
             canonical_z0=2j,
         )

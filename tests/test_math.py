@@ -275,7 +275,24 @@ def test_check_div_alg_thm525():
     is_div2, _ = check_division_algebra(2, 3)  # 2 is QNR mod 3
     assert is_div2
 
-def test_check_div_alg_not_division():
-    # a=9=3² → perfect square → not division algebra
-    is_div, _ = check_division_algebra(9, 5)
+def test_check_div_alg_composite_b_rejected():
+    # b=6 composite → rejected even though A=(97,6/Q) actually splits
+    is_div, msg = check_division_algebra(97, 6)
     assert not is_div
+    assert 'not prime' in msg.lower() or 'prime' in msg.lower()
+
+def test_check_div_alg_prime_b_qr_rejected():
+    # a=3 is QR mod b=11 → Thm 5.2.5 does not apply → rejected
+    # (A=(3,11/Q) is actually a division algebra via p=3, but §5.2 cannot confirm it)
+    is_div, msg = check_division_algebra(3, 11)
+    assert not is_div
+    assert 'residue' in msg.lower() or 'qr' in msg.lower() or '5.2.5' in msg
+
+def test_is_prime_miller_rabin():
+    primes = [2, 3, 5, 7, 11, 13, 97, 101, 7919, 104729]
+    composites = [1, 4, 6, 9, 15, 49, 100, 1001]
+    from visualizer import _is_prime
+    for p in primes:
+        assert _is_prime(p), f'{p} should be prime'
+    for c in composites:
+        assert not _is_prime(c), f'{c} should be composite'
