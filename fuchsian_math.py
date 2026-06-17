@@ -4,7 +4,7 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Callable, List
 
-Y_MAX = 20  # truncation height for vertical geodesic rays
+Y_MAX = 200  # truncation height for vertical geodesic rays
 
 # ── Hyperbolic geometry ───────────────────────────────────────────────────────
 
