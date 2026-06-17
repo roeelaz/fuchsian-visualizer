@@ -188,8 +188,61 @@ def sample_bisector(z1, z2, n=400):
     thetas = np.linspace(1e-6, np.pi - 1e-6, n)
     return (cx + r * np.exp(1j * thetas)).astype(complex)
 
+def _bisector_intersect(p1, p2):
+    """Intersection in ℌ of two bisector geodesics (each from bisector_params).
+    Returns a complex point or None if they don't intersect in ℌ."""
+    v1 = (p1[0] == 'vertical')
+    v2 = (p2[0] == 'vertical')
+    if v1 and v2:
+        return None
+    if v1:
+        xv = p1[1]; cx, r = p2
+        disc = r**2 - (xv - cx)**2
+        if disc <= 0: return None
+        y = _math.sqrt(disc)
+        return xv + 1j * y if y > 1e-10 else None
+    if v2:
+        xv = p2[1]; cx, r = p1
+        disc = r**2 - (xv - cx)**2
+        if disc <= 0: return None
+        y = _math.sqrt(disc)
+        return xv + 1j * y if y > 1e-10 else None
+    cx1, r1 = p1; cx2, r2 = p2
+    denom = 2.0 * (cx2 - cx1)
+    if abs(denom) < 1e-12: return None
+    x = (r1**2 - r2**2 - cx1**2 + cx2**2) / denom
+    disc = r1**2 - (x - cx1)**2
+    if disc <= 0: return None
+    y = _math.sqrt(disc)
+    return x + 1j * y if y > 1e-10 else None
+
+def _bisector_param(p, z):
+    """Arc parameter of point z on bisector p: angle θ ∈ (0,π) or height y."""
+    if p[0] == 'vertical':
+        return z.imag
+    return np.angle(z - p[0])  # p[0] is cx for semicircles
+
+def _sample_bisector_range(p, t_lo, t_hi, n=300):
+    """Sample n points on bisector p between parameters t_lo and t_hi."""
+    if p[0] == 'vertical':
+        ys = np.linspace(t_lo, t_hi, n)
+        return p[1] + 1j * ys
+    cx, r = p
+    thetas = np.linspace(t_lo, t_hi, n)
+    return cx + r * np.exp(1j * thetas)
+
+def _eval_bisector(p, t):
+    """Evaluate bisector p at parameter t."""
+    if p[0] == 'vertical':
+        return p[1] + 1j * t
+    cx, r = p
+    return cx + r * np.exp(1j * t)
+
 def dirichlet_boundary(z0, elements, eps=1e-8):
-    """Return list of arc-point arrays forming the Dirichlet domain boundary of z0."""
+    """Return list of arc-point arrays forming the Dirichlet domain boundary of z0.
+
+    Uses exact bisector intersection to find domain vertices, so adjacent arcs
+    meet at the same point with no gap."""
     images = []
     for M in elements:
         w = mobius(M, z0)
@@ -197,19 +250,64 @@ def dirichlet_boundary(z0, elements, eps=1e-8):
             images.append(w)
     if not images:
         return []
-    boundary = []
+
+    # Deduplicate orbit images
+    unique = []
     for w in images:
-        pts = sample_bisector(z0, w, n=500)
-        d0 = np.array([hyp_dist(p, z0) for p in pts])
-        valid_mask = np.ones(len(pts), dtype=bool)
-        for v in images:
-            if abs(v - w) < 1e-9:
+        if not any(abs(w - v) < 1e-7 for v in unique):
+            unique.append(w)
+    images = unique
+
+    bisectors = [bisector_params(z0, w) for w in images]
+
+    boundary = []
+    for i, (w, p) in enumerate(zip(images, bisectors)):
+        if p[0] == 'vertical':
+            t_lo_full, t_hi_full = 1e-6, float(Y_MAX)
+        else:
+            t_lo_full, t_hi_full = 1e-6, np.pi - 1e-6
+
+        # Candidate split parameters: endpoints + intersections with every other bisector
+        candidates = [t_lo_full, t_hi_full]
+        for j, q in enumerate(bisectors):
+            if j == i:
                 continue
-            dv = np.array([hyp_dist(p, v) for p in pts])
-            valid_mask &= (d0 <= dv + eps)
-        seg = pts[valid_mask]
-        if len(seg) > 1:
+            pt = _bisector_intersect(p, q)
+            if pt is None:
+                continue
+            t = _bisector_param(p, pt)
+            if t_lo_full < t < t_hi_full:
+                candidates.append(float(t))
+        candidates = sorted(set(candidates))
+
+        # Check each sub-interval's midpoint against the Dirichlet condition
+        valid_intervals = []
+        for k in range(len(candidates) - 1):
+            t_mid = (candidates[k] + candidates[k + 1]) / 2.0
+            z_mid = _eval_bisector(p, t_mid)
+            d0 = hyp_dist(z_mid, z0)
+            inside = all(
+                hyp_dist(z_mid, v) >= d0 - eps
+                for v in images if abs(v - w) > 1e-7
+            )
+            if inside:
+                valid_intervals.append((candidates[k], candidates[k + 1]))
+
+        if not valid_intervals:
+            continue
+
+        # Merge contiguous intervals and sample each
+        merged = [list(valid_intervals[0])]
+        for lo, hi in valid_intervals[1:]:
+            if abs(lo - merged[-1][1]) < 1e-10:
+                merged[-1][1] = hi
+            else:
+                merged.append([lo, hi])
+
+        for t_lo, t_hi in merged:
+            seg = _sample_bisector_range(p, t_lo, t_hi, n=300)
             boundary.append(seg)
+
     return boundary
 
 # ── Quaternion algebra (Katok §5.2) ──────────────────────────────────────────
